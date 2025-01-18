@@ -1,7 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { FaShoppingCart, FaTrashAlt } from "react-icons/fa";
+import { FaTrashAlt } from "react-icons/fa";  // Removed FaShoppingCart as it was not used
 import Header from "@/components/Header";
 import { client } from "@/sanity/lib/client";
 
@@ -11,8 +11,6 @@ interface Product {
   description: string;
   price: string;
   imageSrc: string;
-  // flavors?: string[];
-  // sizes?: string[];
 }
 
 interface CartItem {
@@ -20,8 +18,6 @@ interface CartItem {
   title: string;
   price: string;
   imageSrc: string;
-  // flavor: string;
-  // size: string;
   quantity: number;
 }
 
@@ -31,12 +27,9 @@ interface PageProps {
 
 const ProductDetailsPage = ({ params }: PageProps) => {
   const [product, setProduct] = useState<Product | null>(null);
-  const [selectedFlavor, setSelectedFlavor] = useState<string | null>(null);
-  const [selectedSize, setSelectedSize] = useState<string | null>(null);
   const [quantity, setQuantity] = useState<number>(1);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
-  const [relatedProducts, setRelatedProducts] = useState<Product[]>([]);
 
   useEffect(() => {
     const fetchProduct = async () => {
@@ -70,15 +63,13 @@ const ProductDetailsPage = ({ params }: PageProps) => {
   }, [params.id]);
 
   const handleAddToCart = () => {
-    
+    if (!product) return;
 
     const cartItem: CartItem = {
-      id: product!.id,
-      title: product!.title,
-      price: product!.price,
-      imageSrc: product!.imageSrc,
-      // flavor: selectedFlavor,
-      // size: selectedSize,
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      imageSrc: product.imageSrc,
       quantity,
     };
 
@@ -136,44 +127,6 @@ const ProductDetailsPage = ({ params }: PageProps) => {
             <h2 className="text-4xl font-extrabold text-gray-800">{product.title}</h2>
             <p className="text-lg text-gray-600 leading-relaxed">{product.description}</p>
 
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Flavors</h3>
-              <div className="flex flex-wrap gap-3">
-                {/* {product.flavors?.map((flavor) => (
-                  <button
-                    key={flavor}
-                    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
-                      selectedFlavor === flavor
-                        ? "bg-yellow-500 text-white"
-                        : "bg-yellow-100 text-yellow-800"
-                    }`}
-                    onClick={() => setSelectedFlavor(flavor)}
-                  >
-                    {flavor}
-                  </button>
-                ))} */}
-              </div>
-            </div>
-
-            <div>
-              <h3 className="text-xl font-semibold text-gray-800 mb-2">Sizes</h3>
-              <div className="flex flex-wrap gap-3">
-                {/* {product.sizes?.map((size) => (
-                  <button
-                    key={size}
-                    className={`px-4 py-2 rounded-lg font-medium shadow-sm transition-all ${
-                      selectedSize === size
-                        ? "bg-gray-700 text-white"
-                        : "bg-gray-100 text-gray-800"
-                    }`}
-                    onClick={() => setSelectedSize(size)}
-                  >
-                    {size}
-                  </button>
-                ))} */}
-              </div>
-            </div>
-
             <div className="flex items-center space-x-4 mt-4">
               <button
                 className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg"
@@ -206,7 +159,7 @@ const ProductDetailsPage = ({ params }: PageProps) => {
           <h2 className="text-4xl font-bold text-gray-800 text-center mb-12">
             <span className="text-yellow-500">Related Products</span>
           </h2>
-          {/* Related Products Component */}
+          {/* Related Products Section */}
         </div>
 
         {isCartOpen && (
@@ -255,9 +208,6 @@ const ProductDetailsPage = ({ params }: PageProps) => {
                         <h3 className="text-lg font-semibold text-gray-800 truncate">
                           {item.title}
                         </h3>
-                        <p className="text-sm text-gray-600">
-                          {/* {item.flavor} - {item.size} */}
-                        </p>
                         <p className="text-gray-700 text-sm">Quantity: {item.quantity}</p>
                       </div>
                       <button
@@ -302,3 +252,4 @@ const ProductDetailsPage = ({ params }: PageProps) => {
 };
 
 export default ProductDetailsPage;
+                  
