@@ -1,57 +1,103 @@
-'use client'
-import { useEffect, useState } from "react";
+"use client";
+import React, { useEffect, useState } from "react";
 import Link from "next/link";
-import { FaShoppingCart, FaSearch } from "react-icons/fa"; 
+import { FaTrashAlt } from "react-icons/fa";  // Removed FaShoppingCart as it was not used
 import Header from "@/components/Header";
 import { client } from "@/sanity/lib/client";
 
-interface FoodItem {
-  [x: string]: any;
-  name: string;
-  _id: string;
-  imageUrl: string;
-  slug: { current: string };
+// Define types
+interface Product {
+  id: string;
+  title: string;
+  description: string;
+  price: string;
+  imageSrc: string;
 }
 
-const ShopPage = () => {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [sortOption, setSortOption] = useState("Newest");
-  const [shop, setShop] = useState<FoodItem[]>([]);
+interface CartItem {
+  id: string;
+  title: string;
+  price: string;
+  imageSrc: string;
+  quantity: number;
+}
+
+interface PageProps {
+  params: { id: string };
+}
+
+const ProductDetailsPage = ({ params }: PageProps) => {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [quantity, setQuantity] = useState<number>(1);
+  const [cart, setCart] = useState<CartItem[]>([]);
+  const [isCartOpen, setIsCartOpen] = useState(false);
 
   useEffect(() => {
-    const fetchData = async () => {
-      const Query = `*[_type == "food"] {
-        name,
-        _id,
-        "imageUrl": image.asset->url,
-        slug,
-      }`;
-      const data = await client.fetch(Query);
-      setShop(data);
+    const fetchProduct = async () => {
+      if (!params.id) {
+        console.error("Product ID is undefined");
+        return;
+      }
+
+      try {
+        // Define proper type for the fetched product
+        const query = `*[_type == "food" && _id == $id]{
+          name,
+          _id,
+          "imageSrc": image.asset->url,
+          "title": name,
+          description,
+          price,
+        }[0]`;
+
+        const productData: Product | null = await client.fetch(query, { id: params.id });
+
+        if (productData) {
+          setProduct(productData);
+        } else {
+          console.error("Product not found");
+        }
+      } catch (error) {
+        console.error("Error fetching product:", error);
+      }
     };
-    fetchData();
-  }, []);
 
-  // Filter products based on searchQuery
-  const filteredShop = shop.filter(product => 
-    product.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    fetchProduct();
+  }, [params.id]);
 
-  // Sort the products based on sortOption
-  const sortedShop = [...filteredShop].sort((a, b) => {
-    switch (sortOption) {
-      case "Newest":
-        return new Date(b._id).getTime() - new Date(a._id).getTime();
-      case "Oldest":
-        return new Date(a._id).getTime() - new Date(b._id).getTime();
-      case "Price: Low to High":
-        return a.price - b.price; // You will need to add price to the FoodItem type
-      case "Price: High to Low":
-        return b.price - a.price; // You will need to add price to the FoodItem type
-      default:
-        return 0;
-    }
-  });
+  const handleAddToCart = () => {
+    if (!product) return;
+
+    const cartItem: CartItem = {
+      id: product.id,
+      title: product.title,
+      price: product.price,
+      imageSrc: product.imageSrc,
+      quantity,
+    };
+
+    setCart((prevCart) => [...prevCart, cartItem]);
+    setIsCartOpen(true);
+  };
+
+  const handleRemoveFromCart = (id: string) => {
+    setCart((prevCart) => prevCart.filter((item) => item.id !== id));
+  };
+
+  const calculateTotal = () => {
+    const total = cart.reduce((acc, item) => acc + parseFloat(item.price) * item.quantity, 0);
+    const deliveryCharges = 150; // Delivery charges in RS
+    return { total, deliveryCharges, grandTotal: total + deliveryCharges };
+  };
+
+  if (!product) {
+    return (
+      <div className="container mx-auto p-6 text-center">
+        <h1 className="text-4xl font-bold text-gray-800 mb-4">Product Not Found</h1>
+        <p className="text-lg text-gray-600">We couldn’t find the product you’re looking for.</p>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -61,71 +107,152 @@ const ShopPage = () => {
         style={{ backgroundImage: "url('/allnav.png')" }}
       >
         <div className="text-center text-white">
-          <h2 className="text-4xl font-bold">Our Shop</h2>
+          <h2 className="text-4xl font-bold">Welcome to Our Menu</h2>
           <p className="pt-[10px]">
-            <Link href="/" className="text-yellow-400">Home</Link> › Shop
+            <Link href="/" className="text-yellow-400">
+              Home
+            </Link>{" "}
+            › Shop
           </p>
         </div>
       </section>
-      <div className="flex">
-        <div className="container min-w-[75%] mx-auto p-6">
-          <div className="flex flex-col md:flex-row justify-between mb-6 gap-4">
-            <div className="relative mb-4 md:mb-0">
-              <input
-                type="text"
-                placeholder="Search shop..."
-                className="border border-gray-300 rounded-md pl-10 pr-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 w-full"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
-            </div>
-            <div className="flex items-center gap-2 mb-4 md:mb-0">
-              <span className="text-xl text-gray-700">Sort By:</span>
-              <select
-                value={sortOption}
-                onChange={(e) => setSortOption(e.target.value)}
-                className="border border-gray-300 rounded-md p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
-              >
-                <option>Newest</option>
-                <option>Oldest</option>
-                <option>Price: Low to High</option>
-                <option>Price: High to Low</option>
-              </select>
-            </div>
+      <div className="container mx-auto p-6 py-11 mt-7">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center mb-16">
+          <div className="relative">
+            <img
+              className="w-full rounded-lg object-cover shadow-lg"
+              src={product.imageSrc}
+              alt={product.title}
+            />
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {sortedShop.map((product) => (
-              <Link key={product._id} href={`/shop/${product._id}`} passHref>
-                <div className="relative bg-[#F7F7F7] rounded-lg shadow-lg overflow-hidden group cursor-pointer transition-transform transform hover:scale-105">
-                  <img
-                    className="h-[200px] w-full object-cover"
-                    src={product.imageUrl}
-                  />
-                  <div className="p-4 flex flex-col justify-between h-full">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-800">
-                        {product.name}
-                      </h3>
-                      <div className="flex justify-between items-center mt-2">
-                        <span className="text-xl font-semibold text-yellow-500">
-                          {/* Add price if available */}
-                        </span>
-                        <button className="flex items-center gap-2 bg-[#8f8d8d] text-white rounded-md p-2 hover:bg-[#6d6b6b] transition-all focus:outline-none">
-                          <FaShoppingCart className="text-lg" />
-                          <span className="text-sm font-semibold">Add to Cart</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </Link>
-            ))}
+
+          <div className="space-y-6">
+            <h2 className="text-4xl font-extrabold text-gray-800">{product.title}</h2>
+            <p className="text-lg text-gray-600 leading-relaxed">{product.description}</p>
+
+            <div className="flex items-center space-x-4 mt-4">
+              <button
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg"
+                onClick={() => setQuantity(Math.max(quantity - 1, 1))}
+              >
+                -
+              </button>
+              <span className="text-lg font-semibold">{quantity}</span>
+              <button
+                className="bg-gray-200 text-gray-700 px-4 py-2 rounded-lg"
+                onClick={() => setQuantity(quantity + 1)}
+              >
+                +
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-4 mt-4">
+              <span className="text-3xl font-bold text-yellow-500">₨ {product.price}</span>
+              <button
+                onClick={handleAddToCart}
+                className="bg-yellow-500 text-white px-8 py-3 rounded-lg text-lg font-semibold shadow-md hover:bg-yellow-600 transition-transform transform hover:scale-105"
+              >
+                Add to Cart
+              </button>
+            </div>
           </div>
         </div>
+
+        <div className="mb-16">
+          <h2 className="text-4xl font-bold text-gray-800 text-center mb-12">
+            <span className="text-yellow-500">Related Products</span>
+          </h2>
+          {/* Related Products Section */}
+        </div>
+
+        {isCartOpen && (
+          <div className="fixed top-0 right-0 w-80 bg-white shadow-lg p-6 h-full z-50 overflow-auto">
+            <button
+              onClick={() => setIsCartOpen(false)}
+              className="absolute top-4 right-4 text-xl"
+              aria-label="Close Cart"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-6 w-6 text-gray-600 hover:text-gray-800"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={2}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+
+            <div className="px-6 py-4 border-b">
+              <h2 className="text-2xl font-bold text-gray-800">Your Cart</h2>
+            </div>
+
+            <div className="px-4 py-4">
+              {cart.length === 0 ? (
+                <p className="text-lg text-gray-600 text-center mt-8">Your cart is empty.</p>
+              ) : (
+                <div className="space-y-6">
+                  {cart.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center p-4 bg-gray-100 rounded-lg shadow-md"
+                    >
+                      <img
+                        src={item.imageSrc}
+                        alt={item.title}
+                        className="w-16 h-16 object-cover rounded-lg border"
+                      />
+                      <div className="ml-4 flex-1">
+                        <h3 className="text-lg font-semibold text-gray-800 truncate">
+                          {item.title}
+                        </h3>
+                        <p className="text-gray-700 text-sm">Quantity: {item.quantity}</p>
+                      </div>
+                      <button
+                        onClick={() => handleRemoveFromCart(item.id)}
+                        className="ml-2 text-red-500 hover:text-red-600"
+                      >
+                        <FaTrashAlt />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="mt-8">
+                <div className="flex justify-between mb-4 text-gray-700">
+                  <span className="text-lg font-semibold">Total:</span>
+                  <span className="text-lg">{calculateTotal().total} ₨</span>
+                </div>
+                <div className="flex justify-between mb-4 text-gray-700">
+                  <span className="text-lg font-semibold">Delivery:</span>
+                  <span className="text-lg">{calculateTotal().deliveryCharges} ₨</span>
+                </div>
+                <div className="flex justify-between text-xl font-semibold text-yellow-500">
+                  <span>Grand Total:</span>
+                  <span>{calculateTotal().grandTotal} ₨</span>
+                </div>
+              </div>
+
+              <div className="mt-8 flex justify-center">
+                <Link href="/checkout">
+                  <button className="mt-6 w-full bg-yellow-500 text-white font-bold py-3 rounded-lg shadow-lg hover:bg-yellow-600 transition">
+                    Proceed to Checkout
+                  </button>
+                </Link>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
 };
 
-export default ShopPage;
+export default ProductDetailsPage;
+            
