@@ -31,6 +31,27 @@ const ShopPage = () => {
     fetchData();
   }, []);
 
+  // Filter products based on searchQuery
+  const filteredShop = shop.filter(product => 
+    product.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  // Sort the products based on sortOption
+  const sortedShop = [...filteredShop].sort((a, b) => {
+    switch (sortOption) {
+      case "Newest":
+        return new Date(b._id).getTime() - new Date(a._id).getTime();
+      case "Oldest":
+        return new Date(a._id).getTime() - new Date(b._id).getTime();
+      case "Price: Low to High":
+        return a.price - b.price; // You will need to add price to the FoodItem type
+      case "Price: High to Low":
+        return b.price - a.price; // You will need to add price to the FoodItem type
+      default:
+        return 0;
+    }
+  });
+
   return (
     <div>
       <Header />
@@ -53,6 +74,8 @@ const ShopPage = () => {
                 type="text"
                 placeholder="Search shop..."
                 className="border border-gray-300 rounded-md pl-10 pr-4 py-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500 w-full"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
               />
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
             </div>
@@ -60,6 +83,7 @@ const ShopPage = () => {
               <span className="text-xl text-gray-700">Sort By:</span>
               <select
                 value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
                 className="border border-gray-300 rounded-md p-2 text-gray-700 focus:outline-none focus:ring-2 focus:ring-yellow-500"
               >
                 <option>Newest</option>
@@ -70,7 +94,7 @@ const ShopPage = () => {
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-            {shop.map((product) => (
+            {sortedShop.map((product) => (
               <Link key={product._id} href={`/shop/${product._id}`} passHref>
                 <div className="relative bg-[#F7F7F7] rounded-lg shadow-lg overflow-hidden group cursor-pointer transition-transform transform hover:scale-105">
                   <img
