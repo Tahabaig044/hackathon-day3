@@ -6,6 +6,7 @@ import Header from "@/components/Header";
 import { client } from "@/sanity/lib/client";
 
 interface FoodItem {
+  [x: string]: any;
   name: string;
   _id: string;
   imageUrl: string;
